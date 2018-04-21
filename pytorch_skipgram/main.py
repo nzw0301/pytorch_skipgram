@@ -25,7 +25,7 @@ parser.add_argument('--negative', type=int, default=5, metavar='neg',
                     help='the number of negative samples (default: 5)')
 parser.add_argument('--epoch', type=int, default=7, metavar='epochs',
                     help='the number of epochs (default: 7)')
-parser.add_argument('--lr', type=float, default=0.025, metavar='starting_lr',
+parser.add_argument('--lr', type=float, default=0.05, metavar='starting_lr',
                     help='initial learning rate (default: 0.025)')
 parser.add_argument('--input', type=str, metavar='fname',
                     help='training corpus file name')
@@ -71,7 +71,8 @@ def train(epochs, rnd=np.random.RandomState(7)):
                 new_doc = []
         yield np.array(new_doc), num_processed_words
 
-    optimizer = optim.SGD(model.parameters(), lr=starting_lr)
+    # optimizer = optim.SGD(model.parameters(), lr=starting_lr)
+    optimizer = optim.SparseAdam(model.parameters(), lr=starting_lr)
     model.train()
     num_processed_words = 0
     num_words = corpus.num_words

@@ -30,5 +30,4 @@ class EXPSkipGram(nn.Module):
 
         pos = torch.sum(torch.mul(in_vectors, context_pos_vectors), -1)
         neg = torch.sum(torch.mul(in_vectors, context_neg_vectors), -1)
-
-        return - torch.mean(self.log_sigmoid(pos) + torch.sum(self.log_sigmoid(-neg), -1))
+        return - torch.mean(self.log_sigmoid(pos).view(-1) + torch.sum(self.log_sigmoid(-neg), -1))
