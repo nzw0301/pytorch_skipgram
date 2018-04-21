@@ -42,7 +42,7 @@ parser.add_argument('--mini', type=int, default=512, metavar='num_minibatches',
 parser.add_argument('--lr_update_rate', type=int, default=1000,
                     help='update scheduler lr (default: 1000)')
 parser.add_argument('--lr', type=float, default=0.025, metavar='starting_lr',
-                    help='initial learning rate (default: 0.025)')
+                    help='initial learning rate (default: 0.025*num_minibatch)')
 parser.add_argument('--input', type=str, metavar='fname',
                     help='training corpus file name')
 parser.add_argument('--out', type=str, metavar='outfname',
@@ -50,12 +50,13 @@ parser.add_argument('--out', type=str, metavar='outfname',
 
 args = parser.parse_args()
 
-starting_lr = args.lr
+num_minibatches = args.mini
+starting_lr = args.lr * num_minibatches
 lr_update_rate = args.lr_update_rate
 ws = args.window
 NEGATIVE_TABLE_SIZE = 10_000_000
 num_negatives = args.negative
-num_minibatches = args.mini
+
 
 print("Loading training corpus")
 corpus = Corpus(min_count=args.min_count)
@@ -100,10 +101,9 @@ def train(epochs, rnd=np.random.RandomState(7)):
 
         optimizer.zero_grad()
         loss = model(inputs, contexts, negatives)
-        loss_value = loss.data.numpy()
         loss.backward()
         optimizer.step()
-        return loss_value
+        return loss.data.numpy()
 
     # optimizer = optim.SparseAdam(model.parameters(), lr=starting_lr)
     optimizer = optim.SGD(model.parameters(), lr=starting_lr)
@@ -111,18 +111,12 @@ def train(epochs, rnd=np.random.RandomState(7)):
     num_processed_words = last_check = 0
     num_words = corpus.num_words
     loss_value = 0
+    num_add_loss_value = 0
     for epoch in range(epochs):
         inputs = []
         contexts = []
         for doc in docs:
             for doc, num_processed_words in generate_words_from_doc(doc=doc, num_processed_words=num_processed_words):
-                # update lr and logging
-                if num_processed_words - last_check > lr_update_rate:
-                    optimizer.param_groups[0]['lr'] = lr = update_lr(starting_lr, num_processed_words, epochs, num_words)
-                    print('\rprogress: {0:.7f}, lr={1:.7f}, loss={2:.7f}'.format(
-                        num_processed_words / (num_words * epochs), lr, loss_value),
-                        end='')
-                    last_check = num_processed_words
 
                 doclen = len(doc)
                 dynamic_window_sizes = rnd.randint(low=1, high=ws+1, size=doclen)
@@ -135,13 +129,24 @@ def train(epochs, rnd=np.random.RandomState(7)):
                         contexts.append(doc[context_position])
                         inputs.append(word_id)
                         if len(inputs) >= num_minibatches:
-                            loss_value = train_on_minibatches(inputs=inputs, contexts=contexts, num_negatives=num_negatives)
+                            loss_value += train_on_minibatches(inputs=inputs, contexts=contexts, num_negatives=num_negatives)
+                            num_add_loss_value += 1
                             inputs.clear()
                             contexts.clear()
+                if inputs:
+                    loss_value += train_on_minibatches(inputs=inputs, contexts=contexts, num_negatives=num_negatives)
+                    num_add_loss_value += 1
+                    inputs.clear()
+                    contexts.clear()
 
-        train_on_minibatches(inputs=inputs, contexts=contexts, num_negatives=num_negatives)
-        inputs.clear()
-        contexts.clear()
+                # update lr and logging
+                if num_processed_words - last_check > lr_update_rate:
+                    optimizer.param_groups[0]['lr'] = lr = update_lr(starting_lr, num_processed_words, epochs, num_words)
+                    print('\rprogress: {0:.7f}, lr={1:.7f}, loss={2:.7f}'.format(
+                        num_processed_words / (num_words * epochs), lr, loss_value / num_add_loss_value),
+                        end='')
+                    last_check = num_processed_words
+
 
 
 train(epochs=args.epoch, rnd=rnd)
