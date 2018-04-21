@@ -10,6 +10,7 @@ import argparse
 
 rnd = np.random.RandomState(7)
 
+
 def init_negative_table(frequency: np.ndarray, negative_alpha):
     z = np.sum(np.power(frequency, negative_alpha))
     negative_table = np.zeros(NEGATIVE_TABLE_SIZE, dtype=np.int32)
@@ -37,7 +38,7 @@ parser.add_argument('--negative', type=int, default=5, metavar='neg',
                     help='the number of negative samples (default: 5)')
 parser.add_argument('--epoch', type=int, default=7, metavar='epochs',
                     help='the number of epochs (default: 7)')
-parser.add_argument('--mini', type=int, default=512, metavar='num_minibatches',
+parser.add_argument('--batch', type=int, default=512, metavar='num_minibatches',
                     help='the number of pairs of words (default: 512)')
 parser.add_argument('--lr_update_rate', type=int, default=1000,
                     help='update scheduler lr (default: 1000)')
@@ -50,7 +51,7 @@ parser.add_argument('--out', type=str, metavar='outfname',
 
 args = parser.parse_args()
 
-num_minibatches = args.mini
+num_minibatches = args.batch
 starting_lr = args.lr * num_minibatches
 lr_update_rate = args.lr_update_rate
 ws = args.window
@@ -58,11 +59,11 @@ NEGATIVE_TABLE_SIZE = 10_000_000
 num_negatives = args.negative
 
 
-print("Loading training corpus")
+print('Loading training corpus')
 corpus = Corpus(min_count=args.min_count)
 docs = corpus.tokenize_from_file(args.input)
 corpus.build_discard_table(t=args.samples)
-print("V:{}, #words:{}".format(corpus.num_vocab, corpus.num_words))
+print('V:{}, #words:{}'.format(corpus.num_vocab, corpus.num_words))
 negative_table = init_negative_table(frequency=corpus.dictionary.id2freq, negative_alpha=args.noise)
 
 model = EXPSkipGram(V=corpus.num_vocab, embedding_dim=args.dim)
@@ -95,8 +96,18 @@ def train(epochs, rnd=np.random.RandomState(7)):
     def train_on_minibatches(inputs, contexts, num_negatives):
         num_minibatches = len(contexts)
         inputs = tensor(torch.LongTensor(inputs), requires_grad=False).view(num_minibatches, 1)
-        contexts = tensor(torch.LongTensor(contexts), requires_grad=False).view(num_minibatches, 1)
+
         negatives = negative_table[rnd.randint(low=0, high=NEGATIVE_TABLE_SIZE, size=(num_minibatches, num_negatives))]
+
+        for batch_id, (context_word, negative_words) in enumerate(zip(contexts, negatives)):
+            remove_ids = np.where(negative_words == context_word)[0]
+            for remove_id in remove_ids:
+                w = negative_table[rnd.randint(low=0, high=NEGATIVE_TABLE_SIZE, size=1)]
+                while w == context_word:
+                    w = negative_table[rnd.randint(low=0, high=NEGATIVE_TABLE_SIZE, size=1)]
+                negatives[batch_id][remove_id] = w
+
+        contexts = tensor(torch.LongTensor(contexts), requires_grad=False).view(num_minibatches, 1)
         negatives = tensor(torch.LongTensor(negatives), requires_grad=False)
 
         optimizer.zero_grad()
@@ -105,7 +116,6 @@ def train(epochs, rnd=np.random.RandomState(7)):
         optimizer.step()
         return loss.data.numpy()
 
-    # optimizer = optim.SparseAdam(model.parameters(), lr=starting_lr)
     optimizer = optim.SGD(model.parameters(), lr=starting_lr)
     model.train()
     num_processed_words = last_check = 0
@@ -143,10 +153,9 @@ def train(epochs, rnd=np.random.RandomState(7)):
                 if num_processed_words - last_check > lr_update_rate:
                     optimizer.param_groups[0]['lr'] = lr = update_lr(starting_lr, num_processed_words, epochs, num_words)
                     print('\rprogress: {0:.7f}, lr={1:.7f}, loss={2:.7f}'.format(
-                        num_processed_words / (num_words * epochs), lr, loss_value / num_add_loss_value),
-                        end='')
+                            num_processed_words / (num_words * epochs), lr, loss_value / num_add_loss_value),
+                            end='')
                     last_check = num_processed_words
-
 
 
 train(epochs=args.epoch, rnd=rnd)

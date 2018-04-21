@@ -4,6 +4,10 @@ import torch.nn as nn
 
 class EXPSkipGram(nn.Module):
     def __init__(self, V, embedding_dim=100):
+        """
+        :param V: the size of vocabulary
+        :param embedding_dim: the number of dimensions of word vector
+        """
         super(EXPSkipGram, self).__init__()
 
         self.embedding_dim = embedding_dim

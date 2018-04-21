@@ -38,11 +38,11 @@ args = parser.parse_args()
 starting_lr = args.lr
 ws = args.window
 
-print("Load corpus")
+print('Load corpus')
 corpus = Corpus(min_count=args.min_count)
 docs = corpus.tokenize_from_file(args.input)
 corpus.build_discard_table(t=args.samples)
-print("V:{}, #words:{}".format(corpus.num_vocab, corpus.num_words))
+print('V:{}, #words:{}'.format(corpus.num_vocab, corpus.num_words))
 
 model = SkipGram(corpus=corpus, noise_param=args.noise, num_negatives=args.negative, embedding_dim=args.dim)
 
@@ -71,8 +71,7 @@ def train(epochs, rnd=np.random.RandomState(7)):
                 new_doc = []
         yield np.array(new_doc), num_processed_words
 
-    # optimizer = optim.SGD(model.parameters(), lr=starting_lr)
-    optimizer = optim.SparseAdam(model.parameters(), lr=starting_lr)
+    optimizer = optim.SGD(model.parameters(), lr=starting_lr)
     model.train()
     num_processed_words = 0
     num_words = corpus.num_words
