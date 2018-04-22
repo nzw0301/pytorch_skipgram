@@ -13,7 +13,6 @@ class EXPSkipGram(nn.Module):
         self.embedding_dim = embedding_dim
         self.in_embeddings = nn.Embedding(V, embedding_dim, sparse=True)
         self.out_embeddings = nn.Embedding(V, embedding_dim, sparse=True)
-        self.log_sigmoid = nn.LogSigmoid()
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -34,4 +33,4 @@ class EXPSkipGram(nn.Module):
 
         pos = torch.sum(torch.mul(in_vectors, context_pos_vectors), -1)
         neg = torch.sum(torch.mul(in_vectors, context_neg_vectors), -1)
-        return - torch.mean(self.log_sigmoid(pos).view(-1) + torch.sum(self.log_sigmoid(-neg), -1))
+        return pos, neg

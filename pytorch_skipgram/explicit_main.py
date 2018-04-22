@@ -1,5 +1,7 @@
 from pytorch_skipgram.model import EXPSkipGram
+from pytorch_skipgram.loss import negative_sampling_loss, nce_loss
 from pytorch_skipgram.utils.vocab import Corpus
+
 
 from torch import optim
 from torch import tensor
@@ -11,7 +13,7 @@ import argparse
 rnd = np.random.RandomState(7)
 
 
-def init_negative_table(frequency: np.ndarray, negative_alpha):
+def init_negative_table(frequency: np.ndarray, negative_alpha, is_neg_loss):
     z = np.sum(np.power(frequency, negative_alpha))
     negative_table = np.zeros(NEGATIVE_TABLE_SIZE, dtype=np.int32)
     begin_index = 0
@@ -20,8 +22,10 @@ def init_negative_table(frequency: np.ndarray, negative_alpha):
         end_index = begin_index + int(c * NEGATIVE_TABLE_SIZE / z) + 1
         negative_table[begin_index:end_index] = word_id
         begin_index = end_index
-    return negative_table
-
+    if is_neg_loss:
+        return negative_table
+    else:
+        return negative_table, np.power(frequency, negative_alpha)
 
 parser = argparse.ArgumentParser(description='Skip-gram with Negative Sampling by PyTorch')
 parser.add_argument('--window', type=int, default=5, metavar='ws',
@@ -48,6 +52,8 @@ parser.add_argument('--input', type=str, metavar='fname',
                     help='training corpus file name')
 parser.add_argument('--out', type=str, metavar='outfname',
                     help='vector file name')
+parser.add_argument('--loss', type=str, default='neg', metavar='S',
+                    help='loss function name: neg (negative sampling) or nce (noise contrastive estimation)')
 
 args = parser.parse_args()
 
@@ -64,7 +70,17 @@ corpus = Corpus(min_count=args.min_count)
 docs = corpus.tokenize_from_file(args.input)
 corpus.build_discard_table(t=args.samples)
 print('V:{}, #words:{}'.format(corpus.num_vocab, corpus.num_words))
-negative_table = init_negative_table(frequency=corpus.dictionary.id2freq, negative_alpha=args.noise)
+is_neg_loss = (args.loss == 'neg')
+is_neg_loss = False
+
+if is_neg_loss:
+    negative_table = init_negative_table(frequency=corpus.dictionary.id2freq, negative_alpha=args.noise,
+                                         is_neg_loss=is_neg_loss)
+else:
+    negative_table, noise_dist = init_negative_table(frequency=corpus.dictionary.id2freq, negative_alpha=args.noise,
+                                                     is_neg_loss=is_neg_loss)
+    log_k_prob = np.log(num_negatives * noise_dist)
+    del noise_dist
 
 model = EXPSkipGram(V=corpus.num_vocab, embedding_dim=args.dim)
 
@@ -107,11 +123,23 @@ def train(epochs, rnd=np.random.RandomState(7)):
                     w = negative_table[rnd.randint(low=0, high=NEGATIVE_TABLE_SIZE, size=1)]
                 negatives[batch_id][remove_id] = w
 
-        contexts = tensor(torch.LongTensor(contexts), requires_grad=False).view(num_minibatches, 1)
-        negatives = tensor(torch.LongTensor(negatives), requires_grad=False)
-
         optimizer.zero_grad()
-        loss = model(inputs, contexts, negatives)
+
+        if is_neg_loss:
+            contexts = tensor(torch.LongTensor(contexts), requires_grad=False).view(num_minibatches, 1)
+            negatives = tensor(torch.LongTensor(negatives), requires_grad=False)
+
+            pos, neg = model(inputs, contexts, negatives)
+            loss = negative_sampling_loss(pos, neg)
+        else:
+            pos_log_k_negative_prob = tensor(torch.FloatTensor(log_k_prob[contexts]),requires_grad=False).view(num_minibatches, 1)
+            neg_log_k_negative_prob = tensor(torch.FloatTensor(log_k_prob[negatives]), requires_grad=False)
+
+            contexts = tensor(torch.LongTensor(contexts), requires_grad=False).view(num_minibatches, 1)
+            negatives = tensor(torch.LongTensor(negatives), requires_grad=False)
+            pos, neg = model(inputs, contexts, negatives)
+            loss = nce_loss(pos, neg, pos_log_k_negative_prob, neg_log_k_negative_prob)
+
         loss.backward()
         optimizer.step()
         return loss.data.numpy()
