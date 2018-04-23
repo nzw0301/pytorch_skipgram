@@ -71,7 +71,6 @@ docs = corpus.tokenize_from_file(args.input)
 corpus.build_discard_table(t=args.samples)
 print('V:{}, #words:{}'.format(corpus.num_vocab, corpus.num_words))
 is_neg_loss = (args.loss == 'neg')
-is_neg_loss = False
 
 if is_neg_loss:
     negative_table = init_negative_table(frequency=corpus.dictionary.id2freq, negative_alpha=args.noise,
@@ -132,7 +131,7 @@ def train(epochs, rnd=np.random.RandomState(7)):
             pos, neg = model(inputs, contexts, negatives)
             loss = negative_sampling_loss(pos, neg)
         else:
-            pos_log_k_negative_prob = tensor(torch.FloatTensor(log_k_prob[contexts]),requires_grad=False).view(num_minibatches, 1)
+            pos_log_k_negative_prob = tensor(torch.FloatTensor(log_k_prob[contexts]), requires_grad=False).view(num_minibatches, 1)
             neg_log_k_negative_prob = tensor(torch.FloatTensor(log_k_prob[negatives]), requires_grad=False)
 
             contexts = tensor(torch.LongTensor(contexts), requires_grad=False).view(num_minibatches, 1)
