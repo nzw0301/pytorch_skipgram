@@ -2,11 +2,13 @@ import numpy as np
 
 
 class Dictionary(object):
-    def __init__(self):
+    def __init__(self, replace_lower_freq_word=False, replace_word='<unk>'):
         self.word2id = {}
         self.id2word = []
         self.word2freq = {}
         self.id2freq = None
+        self.replace_lower_freq_word = replace_lower_freq_word
+        self.replace_word = replace_word
 
     def add_word(self, word):
         if word not in self.word2id:
@@ -24,9 +26,21 @@ class Dictionary(object):
             if freq >= min_count:
                 self.word2id[word] = new_word_id
             else:
-                for word in self.id2word[new_word_id:]:
-                    del self.word2id[word]
-                self.id2word = self.id2word[:new_word_id]
+                if self.replace_lower_freq_word:
+                    self.word2id[self.replace_word] = new_word_id
+                    sum_unk_freq = 0
+                    for word in self.id2word[new_word_id:]:
+                        sum_unk_freq += self.word2freq[word]
+                        del self.word2id[word]
+                    self.word2freq[self.replace_word] = sum_unk_freq
+                    self.id2word = self.id2word[:new_word_id]
+                    self.id2word.append(self.replace_word)
+
+                else:
+                    for word in self.id2word[new_word_id:]:
+                        del self.word2id[word]
+                    self.id2word = self.id2word[:new_word_id]
+
                 self.id2freq = np.array([self.word2freq[word] for word in self.id2word])
                 del self.word2freq
                 break
@@ -36,20 +50,27 @@ class Dictionary(object):
 
 
 class Corpus(object):
-    def __init__(self, min_count=5):
-        self.dictionary = Dictionary()
+    def __init__(self, min_count=5, replace_lower_freq_word=False, replace_word='<unk>', bos_word='<bos>', eos_word='<eos>'):
+        self.dictionary = Dictionary(replace_lower_freq_word, replace_word)
         self.min_count = min_count
         self.num_words = 0
         self.num_vocab = 0
         self.num_docs = 0
         self.discard_table = None
+        self.replace_lower_freq_word = replace_lower_freq_word
+        self.replace_word = replace_word
+        self.bos_word = bos_word
+        self.eos_word = eos_word
 
     def tokenize_from_file(self, path):
+        def _add_special_word(sentence):
+            return self.bos_word + ' ' + sentence + ' ' + self.eos_word
+
         self.num_words = 0
         self.num_docs = 0
         with open(path) as f:
             for l in f:
-                for word in l.strip().split():
+                for word in _add_special_word(l.strip()).split():
                     self.dictionary.add_word(word=word)
         self.dictionary.rebuild(min_count=self.min_count)
         self.num_vocab = len(self.dictionary)
@@ -58,11 +79,13 @@ class Corpus(object):
             docs = []
             for l in f:
                 doc = []
-                for word in l.strip().split():
+                for word in _add_special_word(l.strip()).split():
                     if word in self.dictionary.word2id:
                         doc.append(self.dictionary.word2id.get(word))
+                    elif self.replace_lower_freq_word:
+                        doc.append(self.dictionary.word2id.get(self.replace_word))
                 if len(doc) > 1:
-                    docs.append(doc)
+                    docs.append(np.array(doc))
                     self.num_words += len(doc)
                     self.num_docs += 1
 
