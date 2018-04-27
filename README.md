@@ -1,7 +1,7 @@
 # pytorch_skipgram
 
 Skip-gram implementation with PyTorch.
-This repo support two loss functions: [negative sampling](https://papers.nips.cc/paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf) and [noise contrastive estimation](https://papers.nips.cc/paper/5165-learning-word-embeddings-efficiently-with-noise-contrastive-estimation.pdf).
+This repo supports two loss functions: [negative sampling](https://papers.nips.cc/paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf) and [noise contrastive estimation](https://papers.nips.cc/paper/5165-learning-word-embeddings-efficiently-with-noise-contrastive-estimation.pdf).
 
 # Requirement
 
@@ -22,3 +22,9 @@ This code supports pytorch v0.4.
 - `--input`: training corpus file name.
 - `--out`: vector file name. format is word2vec's text format.
 - `--loss`: loss function name: neg (negative sampling) or nce (noise contrastive estimation). Default: neg.
+
+## Run
+
+```bash
+python -m pytorch_skipgram.explicit_main.py --input=data/text8 --epoch=1 --out=text8.vec --min-count=5 --sample=1e-5 --batch=100 --negative=10
+```
