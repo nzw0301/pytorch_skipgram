@@ -41,9 +41,9 @@ class Dictionary(object):
                         del self.word2id[word]
                     self.id2word = self.id2word[:new_word_id]
 
-                self.id2freq = np.array([self.word2freq[word] for word in self.id2word])
-                del self.word2freq
                 break
+        self.id2freq = np.array([self.word2freq[word] for word in self.id2word])
+        del self.word2freq
 
     def __len__(self):
         return len(self.id2word)

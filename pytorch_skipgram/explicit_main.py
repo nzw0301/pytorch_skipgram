@@ -1,7 +1,7 @@
 from pytorch_skipgram.model import EXPSkipGram
 from pytorch_skipgram.loss import negative_sampling_loss, nce_loss
 from pytorch_skipgram.utils.vocab import Corpus
-
+from pytorch_skipgram.utils.createcreate_negative_sample_table import init_negative_table
 
 from torch import optim
 from torch import tensor
@@ -12,20 +12,6 @@ import argparse
 
 rnd = np.random.RandomState(7)
 
-
-def init_negative_table(frequency: np.ndarray, negative_alpha, is_neg_loss):
-    z = np.sum(np.power(frequency, negative_alpha))
-    negative_table = np.zeros(NEGATIVE_TABLE_SIZE, dtype=np.int32)
-    begin_index = 0
-    for word_id, freq in enumerate(frequency):
-        c = np.power(freq, negative_alpha)
-        end_index = begin_index + int(c * NEGATIVE_TABLE_SIZE / z) + 1
-        negative_table[begin_index:end_index] = word_id
-        begin_index = end_index
-    if is_neg_loss:
-        return negative_table
-    else:
-        return negative_table, np.power(frequency, negative_alpha)
 
 parser = argparse.ArgumentParser(description='Skip-gram with Negative Sampling by PyTorch')
 parser.add_argument('--window', type=int, default=5, metavar='ws',
@@ -74,10 +60,10 @@ is_neg_loss = (args.loss == 'neg')
 
 if is_neg_loss:
     negative_table = init_negative_table(frequency=corpus.dictionary.id2freq, negative_alpha=args.noise,
-                                         is_neg_loss=is_neg_loss)
+                                         is_neg_loss=is_neg_loss, table_length=NEGATIVE_TABLE_SIZE)
 else:
     negative_table, noise_dist = init_negative_table(frequency=corpus.dictionary.id2freq, negative_alpha=args.noise,
-                                                     is_neg_loss=is_neg_loss)
+                                                     is_neg_loss=is_neg_loss, table_length=NEGATIVE_TABLE_SIZE)
     log_k_prob = np.log(num_negatives * noise_dist)
     del noise_dist
 
