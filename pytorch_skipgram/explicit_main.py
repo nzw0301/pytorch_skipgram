@@ -1,7 +1,7 @@
 from pytorch_skipgram.model import EXPSkipGram
 from pytorch_skipgram.loss import negative_sampling_loss, nce_loss
 from pytorch_skipgram.utils.vocab import Corpus
-from pytorch_skipgram.utils.createcreate_negative_sample_table import init_negative_table
+from pytorch_skipgram.utils.create_negative_sample_table import init_negative_table
 
 from torch import optim
 from torch import tensor
@@ -40,6 +40,8 @@ parser.add_argument('--out', type=str, metavar='outfname',
                     help='vector file name')
 parser.add_argument('--loss', type=str, default='neg', metavar='S',
                     help='loss function name: neg (negative sampling) or nce (noise contrastive estimation)')
+parser.add_argument('--gpu-id', type=int, default=-1, metavar='gpuid',
+                    help='gput id (default: -1, aka CPU)')
 
 args = parser.parse_args()
 
@@ -68,9 +70,13 @@ else:
     del noise_dist
 
 model = EXPSkipGram(V=corpus.num_vocab, embedding_dim=args.dim)
+use_cuda = torch.cuda.is_available() and args.gpu_id > -1
+if use_cuda:
+    torch.cuda.set_device(args.gpu_id)
+    model.cuda()
 
 
-def train(epochs, rnd=np.random.RandomState(7)):
+def train(epochs, use_cuda, rnd=np.random.RandomState(7)):
     def update_lr(starting_lr, num_processed_words, epochs, num_words):
         new_lr = starting_lr * (1. - num_processed_words / (epochs * num_words + 1))
         lower_lr = starting_lr * 0.0001
@@ -94,9 +100,11 @@ def train(epochs, rnd=np.random.RandomState(7)):
                 new_doc = []
         yield np.array(new_doc), num_processed_words
 
-    def train_on_minibatches(inputs, contexts, num_negatives):
+    def train_on_minibatches(inputs, contexts, num_negatives, use_cuda):
         num_minibatches = len(contexts)
         inputs = tensor(torch.LongTensor(inputs), requires_grad=False).view(num_minibatches, 1)
+        if use_cuda:
+            inputs = inputs.cuda()
 
         negatives = negative_table[rnd.randint(low=0, high=NEGATIVE_TABLE_SIZE, size=(num_minibatches, num_negatives))]
 
@@ -113,7 +121,9 @@ def train(epochs, rnd=np.random.RandomState(7)):
         if is_neg_loss:
             contexts = tensor(torch.LongTensor(contexts), requires_grad=False).view(num_minibatches, 1)
             negatives = tensor(torch.LongTensor(negatives), requires_grad=False)
-
+            if use_cuda:
+                contexts = contexts.cuda()
+                negatives = negatives.cuda()
             pos, neg = model(inputs, contexts, negatives)
             loss = negative_sampling_loss(pos, neg)
         else:
@@ -122,12 +132,21 @@ def train(epochs, rnd=np.random.RandomState(7)):
 
             contexts = tensor(torch.LongTensor(contexts), requires_grad=False).view(num_minibatches, 1)
             negatives = tensor(torch.LongTensor(negatives), requires_grad=False)
+            if use_cuda:
+                pos_log_k_negative_prob = pos_log_k_negative_prob.cuda()
+                neg_log_k_negative_prob = neg_log_k_negative_prob.cuda()
+                contexts = contexts.cuda()
+                negatives = negatives.cuda()
+
             pos, neg = model(inputs, contexts, negatives)
             loss = nce_loss(pos, neg, pos_log_k_negative_prob, neg_log_k_negative_prob)
 
         loss.backward()
         optimizer.step()
-        return loss.data.numpy()
+        if use_cuda:
+            return loss.data.cpu().numpy()
+        else:
+            return loss.data.numpy()
 
     optimizer = optim.SGD(model.parameters(), lr=starting_lr)
     model.train()
@@ -152,12 +171,12 @@ def train(epochs, rnd=np.random.RandomState(7)):
                         contexts.append(doc[context_position])
                         inputs.append(word_id)
                         if len(inputs) >= num_minibatches:
-                            loss_value += train_on_minibatches(inputs=inputs, contexts=contexts, num_negatives=num_negatives)
+                            loss_value += train_on_minibatches(inputs=inputs, contexts=contexts, num_negatives=num_negatives, use_cuda=use_cuda)
                             num_add_loss_value += 1
                             inputs.clear()
                             contexts.clear()
                 if inputs:
-                    loss_value += train_on_minibatches(inputs=inputs, contexts=contexts, num_negatives=num_negatives)
+                    loss_value += train_on_minibatches(inputs=inputs, contexts=contexts, num_negatives=num_negatives, use_cuda=use_cuda)
                     num_add_loss_value += 1
                     inputs.clear()
                     contexts.clear()
@@ -171,11 +190,15 @@ def train(epochs, rnd=np.random.RandomState(7)):
                     last_check = num_processed_words
 
 
-train(epochs=args.epoch, rnd=rnd)
+train(epochs=args.epoch, use_cuda=use_cuda, rnd=rnd)
 
 with open(args.out, 'w') as f:
     f.write('{} {}\n'.format(corpus.num_vocab, args.dim))
-    for word_id, vec in enumerate(model.in_embeddings.weight.data.numpy()):
+    if use_cuda:
+        embeddings = model.in_embeddings.weight.data.cpu().numpy()
+    else:
+        embeddings = model.in_embeddings.weight.data.numpy()
+    for word_id, vec in enumerate(embeddings):
         word = corpus.dictionary.id2word[word_id]
         vec = ' '.join(list(map(str, vec)))
         f.write('{} {}\n'.format(word, vec))
