@@ -22,9 +22,10 @@ This code supports pytorch v0.4.
 - `--input`: training corpus file name.
 - `--out`: vector file name. format is word2vec's text format.
 - `--loss`: loss function name: neg (negative sampling) or nce (noise contrastive estimation). Default: neg.
+- `--gpu-id`: gpu device id. you can train the model by cpu if you set gpu-id as -1. Default: -1.
 
 ## Run
 
 ```bash
-python -m pytorch_skipgram.explicit_main.py --input=data/text8 --epoch=1 --out=text8.vec --min-count=5 --sample=1e-5 --batch=100 --negative=10
+python -m pytorch_skipgram.explicit_main.py --input=data/text8 --epoch=1 --out=text8.vec --min-count=5 --sample=1e-5 --batch=100 --negative=10 --gpu-id -1
 ```
