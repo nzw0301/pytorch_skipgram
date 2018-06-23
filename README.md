@@ -27,5 +27,5 @@ This code supports pytorch v0.4.
 ## Run
 
 ```bash
-python -m pytorch_skipgram.explicit_main.py --input=data/text8 --epoch=1 --out=text8.vec --min-count=5 --sample=1e-5 --batch=100 --negative=10 --gpu-id -1
+python -m pytorch_skipgram.main --input=data/text8 --epoch=1 --out=text8.vec --min-count=5 --sample=1e-5 --batch=100 --negative=10 --gpu-id -1
 ```
