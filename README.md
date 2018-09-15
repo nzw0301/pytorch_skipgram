@@ -5,26 +5,38 @@ This repo supports two loss functions: [negative sampling](https://papers.nips.c
 
 # Requirement
 
-This code supports pytorch v0.4.
+- Pytorch >= 0.4 
+- numpy
 
-## Parameter
+## Parameters
 
-- `--window`: the number of window size. Default=5.
-- `--dim` : the number of vector dimensions. Default=100.
-- `--min-count`: threshold value for lower frequency words. Default=5.
-- `--samples`: sub-sampling parameter. Default=1e-3.
-- `--noise`: parameter of noise distribution, `np.pow(word_freq, noise)` default: 0.75.
-- `--negative`: the number of negative samples. Default=5.
-- `--epoch`: the number of epochs. Default=7.
-- `--batch`: the number of pairs of words. Default=512.
-- `--lr_update_rate`: after processing every this number of words, lr is updated. Default=1000.
-- `--lr` :initial learning rate. Note that `lr` multiplies `batch` in this code. Default: 0.025.
-- `--input`: training corpus file name.
-- `--out`: vector file name. format is word2vec's text format.
-- `--loss`: loss function name: neg (negative sampling) or nce (noise contrastive estimation). Default: neg.
-- `--gpu-id`: gpu device id. you can train the model by cpu if you set gpu-id as -1. Default: -1.
+```
+-h, --help            show this help message and exit
+--window ws           the number of window size (default: 5)
+--dim dim             the number of vector dimensions (default: 100)
+--min-count min       threshold value for lower frequency words (default: 5)
+--samples t           sub-sampling parameter (default: 1e-3)
+--noise noise         power value of noise distribution (default: 0.75)
+--negative neg        the number of negative samples (default: 5)
+--epoch epochs        the number of epochs (default: 7)
+--batch num_minibatches
+                    the number of pairs of words (default: 512)
+--lr_update_rate LR_UPDATE_RATE
+                    update scheduler lr (default: 1000)
+--lr starting_lr      initial learning rate (default: 0.025*num_minibatch)
+--input fname         training corpus file name
+--out outfname        vector file name
+--loss LOSS           loss function name: neg (negative sampling) or nce
+                    (noise contrastive estimation)
+--gpu-id gpuid        gput id (default: -1, aka CPU)
+```
 
 ## Run
+
+### Download two data sets: `ptb` and `text8`
+```bash
+sh getdata.sh
+```
 
 ```bash
 python -m pytorch_skipgram.main --input=data/text8 --epoch=1 --out=text8.vec --min-count=5 --sample=1e-5 --batch=100 --negative=10 --gpu-id -1

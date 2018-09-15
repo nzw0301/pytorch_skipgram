@@ -38,7 +38,7 @@ parser.add_argument('--input', type=str, metavar='fname',
                     help='training corpus file name')
 parser.add_argument('--out', type=str, metavar='outfname',
                     help='vector file name')
-parser.add_argument('--loss', type=str, default='neg', metavar='S',
+parser.add_argument('--loss', type=str, default='neg',
                     help='loss function name: neg (negative sampling) or nce (noise contrastive estimation)')
 parser.add_argument('--gpu-id', type=int, default=-1, metavar='gpuid',
                     help='gput id (default: -1, aka CPU)')
