@@ -47,7 +47,8 @@ def test_corpus():
             assert corpus.num_docs == 26 - 4
 
     def test_tokenize_from_file_replace_and_add_special(fname):
-        corpus = Corpus(min_count=5, replace_lower_freq_word=True, replace_word='<unk>', bos_word='<bos>', eos_word='<eos>')
+        corpus = Corpus(min_count=5, replace_lower_freq_word=True, replace_word='<unk>', bos_word='<bos>',
+                        eos_word='<eos>')
         corpus.tokenize_from_file(fname)
 
         assert corpus.dictionary.id2word[-1] == '<unk>'

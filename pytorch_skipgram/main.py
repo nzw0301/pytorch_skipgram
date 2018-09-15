@@ -127,7 +127,8 @@ def train(epochs, use_cuda, rnd=np.random.RandomState(7)):
             pos, neg = model(inputs, contexts, negatives)
             loss = negative_sampling_loss(pos, neg)
         else:
-            pos_log_k_negative_prob = tensor(torch.FloatTensor(log_k_prob[contexts]), requires_grad=False).view(num_minibatches, 1)
+            pos_log_k_negative_prob = tensor(torch.FloatTensor(log_k_prob[contexts]),
+                                             requires_grad=False).view(num_minibatches, 1)
             neg_log_k_negative_prob = tensor(torch.FloatTensor(log_k_prob[negatives]), requires_grad=False)
 
             contexts = tensor(torch.LongTensor(contexts), requires_grad=False).view(num_minibatches, 1)
@@ -171,22 +172,24 @@ def train(epochs, use_cuda, rnd=np.random.RandomState(7)):
                         contexts.append(doc[context_position])
                         inputs.append(word_id)
                         if len(inputs) >= num_minibatches:
-                            loss_value += train_on_minibatches(inputs=inputs, contexts=contexts, num_negatives=num_negatives, use_cuda=use_cuda)
+                            loss_value += train_on_minibatches(inputs=inputs, contexts=contexts,
+                                                               num_negatives=num_negatives, use_cuda=use_cuda)
                             num_add_loss_value += 1
                             inputs.clear()
                             contexts.clear()
                 if inputs:
-                    loss_value += train_on_minibatches(inputs=inputs, contexts=contexts, num_negatives=num_negatives, use_cuda=use_cuda)
+                    loss_value += train_on_minibatches(inputs=inputs, contexts=contexts, num_negatives=num_negatives,
+                                                       use_cuda=use_cuda)
                     num_add_loss_value += 1
                     inputs.clear()
                     contexts.clear()
 
                 # update lr and logging
                 if num_processed_words - last_check > lr_update_rate:
-                    optimizer.param_groups[0]['lr'] = lr = update_lr(starting_lr, num_processed_words, epochs, num_words)
+                    optimizer.param_groups[0]['lr'] = lr = update_lr(starting_lr, num_processed_words, epochs,
+                                                                     num_words)
                     print('\rprogress: {0:.7f}, lr={1:.7f}, loss={2:.7f}'.format(
-                            num_processed_words / (num_words * epochs), lr, loss_value / num_add_loss_value),
-                            end='')
+                        num_processed_words / (num_words * epochs), lr, loss_value / num_add_loss_value), end='')
                     last_check = num_processed_words
 
 
