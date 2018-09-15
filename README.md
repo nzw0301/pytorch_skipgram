@@ -29,6 +29,7 @@ This repo supports two loss functions: [negative sampling](https://papers.nips.c
 --loss LOSS           loss function name: neg (negative sampling) or nce
                     (noise contrastive estimation)
 --gpu-id gpuid        gput id (default: -1, aka CPU)
+--seed SEED           random seed value for numpy and pytorch.
 ```
 
 ## Run

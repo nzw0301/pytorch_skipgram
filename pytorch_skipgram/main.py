@@ -10,7 +10,7 @@ import torch
 import numpy as np
 import argparse
 
-rnd = np.random.RandomState(7)
+NEGATIVE_TABLE_SIZE = int(1e8)
 
 
 parser = argparse.ArgumentParser(description='Skip-gram with Negative Sampling by PyTorch')
@@ -33,7 +33,7 @@ parser.add_argument('--batch', type=int, default=512, metavar='num_minibatches',
 parser.add_argument('--lr_update_rate', type=int, default=1000,
                     help='update scheduler lr (default: 1000)')
 parser.add_argument('--lr', type=float, default=0.025, metavar='starting_lr',
-                    help='initial learning rate (default: 0.025*num_minibatch)')
+                    help='initial learning rate (default: 0.025) innternal learning rate is `lr * num_minibatch`')
 parser.add_argument('--input', type=str, metavar='fname',
                     help='training corpus file name')
 parser.add_argument('--out', type=str, metavar='outfname',
@@ -41,7 +41,10 @@ parser.add_argument('--out', type=str, metavar='outfname',
 parser.add_argument('--loss', type=str, default='neg',
                     help='loss function name: neg (negative sampling) or nce (noise contrastive estimation)')
 parser.add_argument('--gpu-id', type=int, default=-1, metavar='gpuid',
-                    help='gput id (default: -1, aka CPU)')
+                    help='gpu id (default: -1, aka CPU)')
+parser.add_argument('--seed', type=int, default=7,
+                    help='random seed value for numpy and pytorch.')
+
 
 args = parser.parse_args()
 
@@ -49,17 +52,17 @@ num_minibatches = args.batch
 starting_lr = args.lr * num_minibatches
 lr_update_rate = args.lr_update_rate
 ws = args.window
-NEGATIVE_TABLE_SIZE = 10_000_000
 num_negatives = args.negative
+rnd = np.random.RandomState(args.seed)
+torch.manual_seed(args.seed)
 
-
-print('Loading training corpus')
+print('Loading training corpus...')
 corpus = Corpus(min_count=args.min_count)
 docs = corpus.tokenize_from_file(args.input)
 corpus.build_discard_table(t=args.samples)
 print('V:{}, #words:{}'.format(corpus.num_vocab, corpus.num_words))
-is_neg_loss = (args.loss == 'neg')
 
+is_neg_loss = (args.loss == 'neg')
 if is_neg_loss:
     negative_table = init_negative_table(frequency=corpus.dictionary.id2freq, negative_alpha=args.noise,
                                          is_neg_loss=is_neg_loss, table_length=NEGATIVE_TABLE_SIZE)
@@ -71,6 +74,7 @@ else:
 
 model = SkipGram(V=corpus.num_vocab, embedding_dim=args.dim)
 use_cuda = torch.cuda.is_available() and args.gpu_id > -1
+
 if use_cuda:
     torch.cuda.set_device(args.gpu_id)
     model.cuda()
@@ -100,14 +104,13 @@ def train(epochs, use_cuda, rnd=np.random.RandomState(7)):
                 new_doc = []
         yield np.array(new_doc), num_processed_words
 
-    def train_on_minibatches(inputs, contexts, num_negatives, use_cuda):
+    def train_on_minibatches(model, inputs, contexts, num_negatives, use_cuda, optimizer, negative_table, rnd):
         num_minibatches = len(contexts)
         inputs = tensor(torch.LongTensor(inputs), requires_grad=False).view(num_minibatches, 1)
         if use_cuda:
             inputs = inputs.cuda()
 
         negatives = negative_table[rnd.randint(low=0, high=NEGATIVE_TABLE_SIZE, size=(num_minibatches, num_negatives))]
-
         for batch_id, (context_word, negative_words) in enumerate(zip(contexts, negatives)):
             remove_ids = np.where(negative_words == context_word)[0]
             for remove_id in remove_ids:
@@ -158,8 +161,9 @@ def train(epochs, use_cuda, rnd=np.random.RandomState(7)):
     for epoch in range(epochs):
         inputs = []
         contexts = []
-        for doc in docs:
-            for doc, num_processed_words in generate_words_from_doc(doc=doc, num_processed_words=num_processed_words):
+        for sentence in docs:
+            for doc, num_processed_words in generate_words_from_doc(doc=sentence,
+                                                                    num_processed_words=num_processed_words):
 
                 doclen = len(doc)
                 dynamic_window_sizes = rnd.randint(low=1, high=ws+1, size=doclen)
@@ -172,19 +176,23 @@ def train(epochs, use_cuda, rnd=np.random.RandomState(7)):
                         contexts.append(doc[context_position])
                         inputs.append(word_id)
                         if len(inputs) >= num_minibatches:
-                            loss_value += train_on_minibatches(inputs=inputs, contexts=contexts,
-                                                               num_negatives=num_negatives, use_cuda=use_cuda)
+                            loss_value += train_on_minibatches(model, inputs=inputs, contexts=contexts,
+                                                               num_negatives=num_negatives, use_cuda=use_cuda,
+                                                               optimizer=optimizer, negative_table=negative_table,
+                                                               rnd=rnd)
                             num_add_loss_value += 1
                             inputs.clear()
                             contexts.clear()
                 if inputs:
-                    loss_value += train_on_minibatches(inputs=inputs, contexts=contexts, num_negatives=num_negatives,
-                                                       use_cuda=use_cuda)
+                    loss_value += train_on_minibatches(model, inputs=inputs, contexts=contexts,
+                                                       num_negatives=num_negatives,
+                                                       use_cuda=use_cuda, optimizer=optimizer,
+                                                       negative_table=negative_table, rnd=rnd)
                     num_add_loss_value += 1
                     inputs.clear()
                     contexts.clear()
 
-                # update lr and logging
+                # update lr and print progress
                 if num_processed_words - last_check > lr_update_rate:
                     optimizer.param_groups[0]['lr'] = lr = update_lr(starting_lr, num_processed_words, epochs,
                                                                      num_words)
