@@ -16,7 +16,7 @@ def nce_loss(pos_dot, neg_dot, pos_log_k_negative_prob, neg_log_k_negative_prob,
     """
     s_pos = pos_dot - pos_log_k_negative_prob
     s_neg = neg_dot - neg_log_k_negative_prob
-    loss = - (torch.mean(logsigmoid(s_pos).view(-1) + torch.sum(logsigmoid(-s_neg), -1)))
+    loss = - (torch.mean(logsigmoid(s_pos) + torch.sum(logsigmoid(-s_neg), dim=1)))
 
     if not reduce:
         return loss
@@ -33,7 +33,7 @@ def negative_sampling_loss(pos_dot, neg_dot, size_average=True, reduce=True):
     :param reduce:
     :return:
     """
-    loss = -(logsigmoid(pos_dot.squeeze()) + torch.sum(logsigmoid(-neg_dot), -1))
+    loss = -(logsigmoid(pos_dot) + torch.sum(logsigmoid(-neg_dot), dim=1))
 
     if not reduce:
         return loss

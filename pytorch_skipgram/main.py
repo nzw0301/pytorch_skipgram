@@ -106,7 +106,7 @@ def train(epochs, use_cuda, rnd=np.random.RandomState(7)):
 
     def train_on_minibatches(model, inputs, contexts, num_negatives, use_cuda, optimizer, negative_table, rnd):
         num_minibatches = len(contexts)
-        inputs = tensor(torch.LongTensor(inputs), requires_grad=False).view(num_minibatches, 1)
+        inputs = torch.LongTensor(inputs).view(num_minibatches, 1)
         if use_cuda:
             inputs = inputs.cuda()
 
@@ -122,20 +122,19 @@ def train(epochs, use_cuda, rnd=np.random.RandomState(7)):
         optimizer.zero_grad()
 
         if is_neg_loss:
-            contexts = tensor(torch.LongTensor(contexts), requires_grad=False).view(num_minibatches, 1)
-            negatives = tensor(torch.LongTensor(negatives), requires_grad=False)
+            contexts = torch.LongTensor(contexts).view(num_minibatches, 1)
+            negatives = torch.LongTensor(negatives)
             if use_cuda:
                 contexts = contexts.cuda()
                 negatives = negatives.cuda()
             pos, neg = model(inputs, contexts, negatives)
             loss = negative_sampling_loss(pos, neg)
         else:
-            pos_log_k_negative_prob = tensor(torch.FloatTensor(log_k_prob[contexts]),
-                                             requires_grad=False).view(num_minibatches, 1)
-            neg_log_k_negative_prob = tensor(torch.FloatTensor(log_k_prob[negatives]), requires_grad=False)
+            pos_log_k_negative_prob = torch.FloatTensor(log_k_prob[contexts]).view(num_minibatches, 1)
+            neg_log_k_negative_prob = torch.FloatTensor(log_k_prob[negatives])
 
-            contexts = tensor(torch.LongTensor(contexts), requires_grad=False).view(num_minibatches, 1)
-            negatives = tensor(torch.LongTensor(negatives), requires_grad=False)
+            contexts = torch.LongTensor(contexts).view(num_minibatches, 1)
+            negatives = torch.LongTensor(negatives)
             if use_cuda:
                 pos_log_k_negative_prob = pos_log_k_negative_prob.cuda()
                 neg_log_k_negative_prob = neg_log_k_negative_prob.cuda()

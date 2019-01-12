@@ -31,7 +31,7 @@ class SkipGram(nn.Module):
         pos_context_vectors = self.out_embeddings(contexts)
         neg_context_vectors = self.out_embeddings(negatives)
 
-        pos = torch.sum(torch.mul(in_vectors, pos_context_vectors), -1)
-        neg = torch.sum(torch.mul(in_vectors, neg_context_vectors), -1)
+        pos = torch.sum(in_vectors * pos_context_vectors, dim=(1, 2))
+        neg = torch.sum(in_vectors * neg_context_vectors, dim=(2))
 
         return pos, neg
