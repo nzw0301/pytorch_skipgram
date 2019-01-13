@@ -5,7 +5,7 @@ This repo supports two loss functions: [negative sampling](https://papers.nips.c
 
 # Requirement
 
-- Pytorch >= 0.4 
+- Pytorch >= 1.0
 - numpy
 
 ## Parameters
