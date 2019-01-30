@@ -2,7 +2,11 @@ import numpy as np
 
 
 class Dictionary(object):
-    def __init__(self, replace_lower_freq_word=False, replace_word='<unk>'):
+    def __init__(
+            self,
+            replace_lower_freq_word=False,
+            replace_word='<unk>'
+    ):
         self.word2id = {}
         self.id2word = []
         self.word2freq = {}
@@ -50,8 +54,14 @@ class Dictionary(object):
 
 
 class Corpus(object):
-    def __init__(self, min_count=5, replace_lower_freq_word=False,
-                 replace_word='<unk>', bos_word='<bos>', eos_word='<eos>'):
+    def __init__(
+            self,
+            min_count=5,
+            replace_lower_freq_word=False,
+            replace_word='<unk>',
+            bos_word='<bos>',
+            eos_word='<eos>'
+    ):
         self.dictionary = Dictionary(replace_lower_freq_word, replace_word)
         self.min_count = min_count
         self.num_words = 0

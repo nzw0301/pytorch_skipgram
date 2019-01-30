@@ -27,13 +27,15 @@ def nce_loss(pos_dot, neg_dot, pos_log_k_negative_prob, neg_log_k_negative_prob,
 
 def negative_sampling_loss(pos_dot, neg_dot, size_average=True, reduce=True):
     """
-    :param pos_dot: The first variable of SKipGram's output
-    :param neg_dot: The second variable of SKipGram's output
+    :param pos_dot: The first tensor of SKipGram's output: (#mini_batches)
+    :param neg_dot: The second tensor of SKipGram's output: (#mini_batches, #negatives)
     :param size_average:
     :param reduce:
-    :return:
+    :return: a tensor has a negative sampling loss
     """
-    loss = -(logsigmoid(pos_dot) + torch.sum(logsigmoid(-neg_dot), dim=1))
+    loss = - (
+            logsigmoid(pos_dot) + torch.sum(logsigmoid(-neg_dot), dim=1)
+    )
 
     if not reduce:
         return loss

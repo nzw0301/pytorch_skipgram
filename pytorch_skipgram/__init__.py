@@ -1,2 +1,2 @@
-from .utils import Corpus, Dictionary, init_negative_table
+from .utils import Corpus, Dictionary, negative_sampler
 from .model.sgns import SkipGram

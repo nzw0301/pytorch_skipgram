@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 class SkipGram(nn.Module):
-    def __init__(self, V, embedding_dim=100):
+    def __init__(self, V: int, embedding_dim=100):
         """
         :param V: the size of vocabulary
         :param embedding_dim: the number of dimensions of word vector
@@ -16,7 +16,7 @@ class SkipGram(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        upper = 0.5/self.embedding_dim
+        upper = 0.5 / self.embedding_dim
         self.in_embeddings.weight.data.uniform_(-upper, upper)
         self.out_embeddings.weight.data.zero_()
 
@@ -32,6 +32,6 @@ class SkipGram(nn.Module):
         neg_context_vectors = self.out_embeddings(negatives)
 
         pos = torch.sum(in_vectors * pos_context_vectors, dim=(1, 2))
-        neg = torch.sum(in_vectors * neg_context_vectors, dim=(2))
+        neg = torch.sum(in_vectors * neg_context_vectors, dim=2)
 
         return pos, neg
