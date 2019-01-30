@@ -1,6 +1,5 @@
 build/
 pytorch_skipgram.egg-info/
 .pytest_cache/
-data/text8*
-data/penn
 *.vec
+data/
