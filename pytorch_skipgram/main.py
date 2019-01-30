@@ -81,6 +81,7 @@ if __name__ == '__main__':
     logger.setLevel(logging.INFO)
     stream_handler = logging.StreamHandler()
     stream_handler.setLevel(logging.INFO)
+    stream_handler.terminator = ''
     logger.addHandler(stream_handler)
 
     parser = argparse.ArgumentParser(description='Skip-gram with Negative Sampling by PyTorch')
@@ -125,11 +126,11 @@ if __name__ == '__main__':
     rnd = np.random.RandomState(args.seed)
     torch.manual_seed(args.seed)
 
-    logger.info('Loading training corpus...')
+    logger.info('Loading training corpus...\n')
     corpus = Corpus(min_count=args.min_count)
     docs = corpus.tokenize_from_file(args.input)
     corpus.build_discard_table(t=args.samples)
-    logger.info('V:{}, #words:{}'.format(corpus.num_vocab, corpus.num_words))
+    logger.info('V:{}, #words:{}\n'.format(corpus.num_vocab, corpus.num_words))
 
     is_neg_loss = (args.loss == 'neg')
     negative_sampler = NegativeSampler(
@@ -139,10 +140,10 @@ if __name__ == '__main__':
         table_length=NEGATIVE_TABLE_SIZE
     )
     if is_neg_loss:
-        logger.info('loss function: Negative Sampling')
+        logger.info('loss function: Negative Sampling\n')
     else:
         log_k_prob = np.log(num_negatives * negative_sampler.noise_dist)
-        logger.info('loss function: NCE')
+        logger.info('loss function: NCE\n')
 
     model = SkipGram(V=corpus.num_vocab, embedding_dim=args.dim)
 
