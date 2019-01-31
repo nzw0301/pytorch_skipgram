@@ -40,5 +40,40 @@ sh getdata.sh
 ```
 
 ```bash
-python -m pytorch_skipgram.main --input=data/text8 --epoch=1 --out=text8.vec --min-count=5 --sample=1e-5 --batch=100 --negative=10 --gpu-id -1
+python -m pytorch_skipgram.main --input=data/text8 --dim=128 --epoch=5 --out=text8.vec --min-count=5 --sample=1e-4 --batch=16 --negative=15 --gpu-id -1
+```
+
+### Similarity
+```python
+for w, s in model.most_similar(positive=["king"], topn=10):
+    print(w, s)
+
+canute 0.7516068816184998
+sweyn 0.7161520719528198
+haakon 0.715397298336029
+plantagenet 0.7071711421012878
+kings 0.7037447094917297
+valdemar 0.703365683555603
+omri 0.699432373046875
+capet 0.6928986310958862
+conqueror 0.6921138763427734
+eochaid 0.690447986125946
+```
+
+
+### Analogy
+```python
+for w, s in model.most_similar(positive=["king", "woman"], negative=["man"], topn=10):
+    print(w, s)
+
+queen 0.649447500705719
+daughter 0.6051150560379028
+anjou 0.6023151874542236
+consort 0.595568060874939
+son 0.5846152305603027
+marries 0.5731959342956543
+aquitaine 0.5700898170471191
+isabella 0.568467378616333
+infanta 0.5641375780105591
+princess 0.5628763437271118
 ```
