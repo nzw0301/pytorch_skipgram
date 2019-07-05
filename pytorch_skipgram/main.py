@@ -110,11 +110,11 @@ if __name__ == '__main__':
     parser.add_argument('--out', type=str, metavar='outfname',
                         help='vector file name')
     parser.add_argument('--loss', type=str, default='neg',
-                        help='loss function name: neg (negative sampling) or nce (noise contrastive estimation)')
+                        help='loss function name: neg (negative sampling) or nce (noise contrastive estimation) (default: neg)')
     parser.add_argument('--gpu-id', type=int, default=-1, metavar='gpuid',
                         help='gpu id (default: -1, aka CPU)')
     parser.add_argument('--seed', type=int, default=7,
-                        help='random seed value for numpy and pytorch.')
+                        help='random seed value for numpy and pytorch. (default: 7)')
 
     args = parser.parse_args()
     ws = args.window
