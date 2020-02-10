@@ -39,7 +39,7 @@ parameters:
 
 ## Run
 
-### Download two data sets: `ptb` and `text8`
+### Download two data sets: `text8` and `ptb` 
 
 ```bash
 sh getdata.sh
@@ -47,7 +47,7 @@ sh getdata.sh
 
 ```bash
 python -m pytorch_skipgram.main # train on text8
-python -m pytorch_skipgram.main dataset=ptb # train on text8
+python -m pytorch_skipgram.main dataset=ptb # train on penn treebank
 ```
 
 ### Similarity task
