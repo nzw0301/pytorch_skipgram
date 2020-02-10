@@ -1,15 +1,14 @@
-from torch import optim
-import torch
-
-import numpy as np
-import argparse
 import logging
 
-from pytorch_skipgram.model import SkipGram
-from pytorch_skipgram.loss import negative_sampling_loss, nce_loss
-from pytorch_skipgram.utils.vocab import Corpus
-from pytorch_skipgram.utils.negative_sampler import NegativeSampler
+import hydra
+import numpy as np
+import torch
+from torch import optim
 
+from pytorch_skipgram.loss import negative_sampling_loss, nce_loss
+from pytorch_skipgram.model import SkipGram
+from pytorch_skipgram.utils.negative_sampler import NegativeSampler
+from pytorch_skipgram.utils.vocab import Corpus
 
 NEGATIVE_TABLE_SIZE = int(1e8)
 
@@ -20,7 +19,7 @@ def update_lr(starting_lr, num_processed_words, epochs, num_words):
     return max(new_lr, lower_lr)
 
 
-def generate_words_from_doc(doc, num_processed_words):
+def generate_words_from_doc(doc, num_processed_words, corpus, rnd):
     """
     this generator separates a long document into shorter documents
     :param doc: np.array(np.int), word_id list
@@ -39,7 +38,7 @@ def generate_words_from_doc(doc, num_processed_words):
     yield np.array(new_doc), num_processed_words
 
 
-def train_on_minibatches(model, optimizer, use_cuda, inputs, contexts, negatives):
+def train_on_minibatches(model, optimizer, use_cuda, inputs, contexts, negatives, is_neg_loss, log_k_prob=None):
     num_minibatches = len(contexts)
     inputs = torch.LongTensor(inputs).view(num_minibatches, 1)
     if use_cuda:
@@ -76,7 +75,8 @@ def train_on_minibatches(model, optimizer, use_cuda, inputs, contexts, negatives
     return loss.item()
 
 
-if __name__ == '__main__':
+@hydra.main(config_path='../conf/config.yaml')
+def main(cfg):
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
     stream_handler = logging.StreamHandler()
@@ -84,72 +84,43 @@ if __name__ == '__main__':
     stream_handler.terminator = ''
     logger.addHandler(stream_handler)
 
-    parser = argparse.ArgumentParser(description='Skip-gram with Negative Sampling by PyTorch')
-    parser.add_argument('--window', type=int, default=5, metavar='ws',
-                        help='the number of windows (default: 5)')
-    parser.add_argument('--dim', type=int, default=100, metavar='dim',
-                        help='the number of vector dimensions (default: 100)')
-    parser.add_argument('--min-count', type=int, default=5, metavar='min',
-                        help='threshold value for lower frequency words (default: 5)')
-    parser.add_argument('--samples', type=float, default=1e-3, metavar='t',
-                        help='sub-sampling parameter (default: 1e-3)')
-    parser.add_argument('--noise', type=float, default=0.75, metavar='noise',
-                        help='power value of noise distribution (default: 0.75)')
-    parser.add_argument('--negative', type=int, default=5, metavar='neg',
-                        help='the number of negative samples (default: 5)')
-    parser.add_argument('--epochs', type=int, default=7, metavar='epochs',
-                        help='the number of epochs (default: 7)')
-    parser.add_argument('--batch', type=int, default=512, metavar='num_minibatches',
-                        help='the number of pairs of words (default: 512)')
-    parser.add_argument('--lr_update_rate', type=int, default=1000,
-                        help='update scheduler lr (default: 1000)')
-    parser.add_argument('--lr', type=float, default=0.025, metavar='starting_lr',
-                        help='initial learning rate (default: 0.025) internal learning rate is `lr * num_minibatch`')
-    parser.add_argument('--input', type=str, metavar='fname',
-                        help='training corpus file name')
-    parser.add_argument('--out', type=str, metavar='outfname',
-                        help='vector file name')
-    parser.add_argument('--loss', type=str, default='neg',
-                        help='loss function name: neg (negative sampling) or nce (noise contrastive estimation) (default: neg)')
-    parser.add_argument('--gpu-id', type=int, default=-1, metavar='gpuid',
-                        help='gpu id (default: -1, aka CPU)')
-    parser.add_argument('--seed', type=int, default=7,
-                        help='random seed value for numpy and pytorch. (default: 7)')
+    ws = cfg['parameters']['window']
+    num_negatives = cfg['parameters']['negative']
+    epochs = cfg['parameters']['epochs']
+    num_minibatches = cfg['parameters']['batch']
+    starting_lr = cfg['parameters']['lr'] * num_minibatches
+    lr_update_rate = cfg['parameters']['lr_update_rate']
+    embedding_dim = cfg['parameters']['dim']
 
-    args = parser.parse_args()
-    ws = args.window
-    num_negatives = args.negative
-    epochs = args.epochs
-    num_minibatches = args.batch
-    starting_lr = args.lr * num_minibatches
-    lr_update_rate = args.lr_update_rate
-    rnd = np.random.RandomState(args.seed)
-    torch.manual_seed(args.seed)
+    seed = cfg['experiments']['seed']
+    rnd = np.random.RandomState(seed)
+    torch.manual_seed(seed)
 
     logger.info('Loading training corpus...\n')
-    corpus = Corpus(min_count=args.min_count)
-    docs = corpus.tokenize_from_file(args.input)
-    corpus.build_discard_table(t=args.samples)
+    corpus = Corpus(min_count=cfg['parameters']['min_count'])
+    docs = corpus.tokenize_from_file(cfg['dataset']['input_path'])
+    corpus.build_discard_table(t=cfg['parameters']['samples'])
     logger.info('V:{}, #words:{}\n'.format(corpus.num_vocab, corpus.num_words))
 
-    is_neg_loss = (args.loss == 'neg')
+    is_neg_loss = (cfg['parameters']['loss'] == 'neg')
     negative_sampler = NegativeSampler(
         frequency=corpus.dictionary.id2freq,
-        negative_alpha=args.noise,
+        negative_alpha=cfg['parameters']['noise'],
         is_neg_loss=is_neg_loss,
         table_length=NEGATIVE_TABLE_SIZE
     )
     if is_neg_loss:
+        log_k_prob = None
         logger.info('loss function: Negative Sampling\n')
     else:
         log_k_prob = np.log(num_negatives * negative_sampler.noise_dist)
         logger.info('loss function: NCE\n')
 
-    model = SkipGram(V=corpus.num_vocab, embedding_dim=args.dim)
+    model = SkipGram(V=corpus.num_vocab, embedding_dim=embedding_dim)
 
-    use_cuda = torch.cuda.is_available() and args.gpu_id > -1
+    use_cuda = torch.cuda.is_available() and cfg['experiments']['gpu_id'] > -1
     if use_cuda:
-        torch.cuda.set_device(args.gpu_id)
+        torch.cuda.set_device(cfg['experiments']['gpu_id'])
         model.cuda()
 
     optimizer = optim.SGD(model.parameters(), lr=starting_lr)
@@ -162,11 +133,12 @@ if __name__ == '__main__':
         inputs = []
         contexts = []
         for sentence in docs:
-            for doc, num_processed_words in generate_words_from_doc(doc=sentence,
-                                                                    num_processed_words=num_processed_words):
+            for doc, num_processed_words in generate_words_from_doc(
+                    doc=sentence, num_processed_words=num_processed_words, corpus=corpus, rnd=rnd
+            ):
 
                 doclen = len(doc)
-                dynamic_window_sizes = rnd.randint(low=1, high=ws+1, size=doclen)
+                dynamic_window_sizes = rnd.randint(low=1, high=ws + 1, size=doclen)
                 for (position, (word_id, dynamic_window_size)) in enumerate(zip(doc, dynamic_window_sizes)):
                     begin_pos = max(0, position - dynamic_window_size)
                     end_pos = min(position + dynamic_window_size, doclen - 1) + 1
@@ -183,7 +155,9 @@ if __name__ == '__main__':
                                 use_cuda=use_cuda,
                                 inputs=inputs,
                                 contexts=contexts,
-                                negatives=negatives
+                                negatives=negatives,
+                                is_neg_loss=is_neg_loss,
+                                log_k_prob=log_k_prob
                             )
                             num_add_loss_value += 1
                             inputs.clear()
@@ -196,7 +170,9 @@ if __name__ == '__main__':
                         use_cuda=use_cuda,
                         inputs=inputs,
                         contexts=contexts,
-                        negatives=negatives
+                        negatives=negatives,
+                        is_neg_loss=is_neg_loss,
+                        log_k_prob=log_k_prob
                     )
                     num_add_loss_value += 1
                     inputs.clear()
@@ -215,8 +191,8 @@ if __name__ == '__main__':
                     )
                     last_check = num_processed_words
 
-    with open(args.out, 'w') as f:
-        f.write('{} {}\n'.format(corpus.num_vocab, args.dim))
+    with open(cfg['dataset']['outout_file_name'], 'w') as f:
+        f.write('{} {}\n'.format(corpus.num_vocab, embedding_dim))
         if use_cuda:
             embeddings = model.in_embeddings.weight.data.cpu().numpy()
         else:
@@ -225,3 +201,7 @@ if __name__ == '__main__':
             word = corpus.dictionary.id2word[word_id]
             vec = ' '.join(list(map(str, vec)))
             f.write('{} {}\n'.format(word, vec))
+
+
+if __name__ == '__main__':
+    main()

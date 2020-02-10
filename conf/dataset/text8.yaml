@@ -1,0 +1,3 @@
+dataset:
+  input_path: ../../../data/text8 # training corpus file name
+  outout_file_name: text8.vec # vector file name

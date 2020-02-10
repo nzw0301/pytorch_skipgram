@@ -1,0 +1,3 @@
+dataset:
+  input_path: ../../../data/penn/train.txt
+  outout_file_name: penn.vec

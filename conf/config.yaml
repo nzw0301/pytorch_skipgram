@@ -1,0 +1,19 @@
+defaults:
+  - dataset: text8
+
+parameters:
+  window: 5  # the number of windows
+  dim: 100 # the number of vector dimensions
+  min_count: 5 # threshold value for lower frequency words
+  samples: 1e-3 # sub-sampling parameter
+  noise: 0.75 # power value of noise distribution
+  negative: 5 # the number of negative samples
+  epochs: 7 # the number of epochs
+  batch: 512 # the number of pairs of words
+  lr_update_rate: 1000 # update scheduler lr
+  lr: 0.025 # initial learning rate (default: 0.025) internal learning rate is `lr * num_minibatch`
+  loss: neg # loss function name: neg (negative sampling) or nce (noise contrastive estimation)
+
+experiments:
+  seed: 7 # random seed value for numpy and pytorch.
+  gpu_id: -1 # GPU id. Default value, -1, aka CPU

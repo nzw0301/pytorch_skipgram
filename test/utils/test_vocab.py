@@ -1,7 +1,9 @@
-from pytorch_skipgram.utils import Corpus
-import numpy as np
 import os
 import string
+
+import numpy as np
+
+from pytorch_skipgram.utils import Corpus
 
 text8_like_file_name = 'text8-like.txt'
 doc_file_name = 'doc.txt'
@@ -34,7 +36,7 @@ def test_corpus():
     def test_tokenize_from_file(fname):
         corpus = Corpus(min_count=5, replace_lower_freq_word=False, replace_word='', bos_word='', eos_word='')
         corpus.tokenize_from_file(fname)
-        assert len(corpus.dictionary) == 26-4
+        assert len(corpus.dictionary) == 26 - 4
         assert corpus.dictionary.id2word[0] == 'z'
         assert corpus.dictionary.id2word[-1] == 'e'
         assert corpus.dictionary.id2freq[0] == 26

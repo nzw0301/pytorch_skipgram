@@ -5,43 +5,49 @@ This repo supports two loss functions: [negative sampling](https://papers.nips.c
 
 # Requirement
 
-- Pytorch >= 1.0
+- PyTorch >= 1.0
 - numpy
+- hydra
 
 ## Parameters
 
-```
--h, --help            show this help message and exit
---window ws           the number of windows (default: 5)
---dim dim             the number of vector dimensions (default: 100)
---min-count min       threshold value for lower frequency words (default: 5)
---samples t           sub-sampling parameter (default: 1e-3)
---noise noise         power value of noise distribution (default: 0.75)
---negative neg        the number of negative samples (default: 5)
---epochs epochs       the number of epochs (default: 7)
---batch num_minibatches
-                    the number of pairs of words (default: 512)
---lr_update_rate LR_UPDATE_RATE
-                    update scheduler lr (default: 1000)
---lr starting_lr      initial learning rate (default: 0.025) internal
-                    learning rate is `lr * num_minibatch`
---input fname         training corpus file name
---out outfname        vector file name
---loss LOSS           loss function name: neg (negative sampling) or nce
-                    (noise contrastive estimation) (default: neg)
---gpu-id gpuid        gpu id (default: -1, aka CPU)
---seed SEED           random seed value for numpy and pytorch. (default: 7)
+See [`conf/config.yaml`](./conf/config.yaml).
+
+Default parameters are as follows:
+
+```bash
+$ python -m pytorch_skipgram.main --cfg job                                                                              [16:46:18]
+dataset:
+  input_path: ../../../data/text8
+  outout_file_name: text8.vec
+experiments:
+  gpu_id: -1
+  seed: 7
+parameters:
+  batch: 512
+  dim: 100
+  epochs: 7
+  loss: neg
+  lr: 0.025
+  lr_update_rate: 1000
+  min_count: 5
+  negative: 5
+  noise: 0.75
+  samples: 0.001
+  window: 5
 ```
 
 ## Run
 
 ### Download two data sets: `ptb` and `text8`
+
 ```bash
 sh getdata.sh
 ```
 
 ```bash
-python -m pytorch_skipgram.main --input=data/text8 --dim=128 --epoch=5 --out=text8.vec --min-count=5 --sample=1e-4 --batch=16 --negative=15 --gpu-id -1
+python -m pytorch_skipgram.main # train on text8
+python -m pytorch_skipgram.main dataset=ptb # train on text8
 ```
 
 ### Similarity task

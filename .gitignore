@@ -3,3 +3,4 @@ pytorch_skipgram.egg-info/
 .pytest_cache/
 *.vec
 data/
+outputs/
