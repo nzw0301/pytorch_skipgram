@@ -16,7 +16,8 @@ See [`conf/config.yaml`](./conf/config.yaml).
 Default parameters are as follows:
 
 ```bash
-$ python -m pytorch_skipgram.main --cfg job                                                                              [16:46:18]
+$ python -m pytorch_skipgram.main --cfg job
+
 dataset:
   input_path: ../../../data/text8
   outout_file_name: text8.vec
